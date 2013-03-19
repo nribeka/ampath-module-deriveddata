@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<module configVersion="1.2">
+
+    <!-- Module Properties -->
+    <id>deriveddata</id>
+    <name>Derived Data Module</name>
+    <version>1.0.0</version>
+    <package>org.openmrs.module.deriveddata</package>
+    <author>Ampath Devs</author>
+    <description>
+        The module will be used to generate derived data from OpenMRS core tables.
+    </description>
+    <updateURL>https://modules.openmrs.org/modules/download/deriveddata/update.rdf</updateURL>
+    <require_version>1.8.2</require_version>
+    <require_modules>
+        <require_module version="2.0.1">
+            org.openmrs.event
+        </require_module>
+    </require_modules>
+    <!-- / Module Properties -->
+
+    <!-- Module Activator -->
+    <activator>org.openmrs.module.deriveddata.DerivedDataActivator</activator>
+
+    <!-- Adds link to admin page -->
+    <extension>
+        <point>org.openmrs.admin.list</point>
+        <class>org.openmrs.module.deriveddata.extension.html.AdminList</class>
+    </extension>
+
+    <!-- Maps hibernate file's, if present -->
+    <mappingFiles>
+        ArvData.hbm.xml
+    </mappingFiles>
+
+    <!-- Internationalization -->
+    <!-- All message codes should start with deriveddata. -->
+    <messages>
+        <lang>en</lang>
+        <file>messages.properties</file>
+    </messages>
+    <messages>
+        <lang>fr</lang>
+        <file>messages_fr.properties</file>
+    </messages>
+    <messages>
+        <lang>es</lang>
+        <file>messages_es.properties</file>
+    </messages>
+    <!-- /Internationalization -->
+
+</module>

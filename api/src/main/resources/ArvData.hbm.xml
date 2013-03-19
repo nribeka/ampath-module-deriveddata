@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+    "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd" >
+
+<hibernate-mapping package="org.openmrs.module.deriveddata.api.model">
+
+	<class name="org.openmrs.module.deriveddata.api.model.ArvData" table="deriveddata_arv_data">
+		<id name="id" type="int" column="id" unsaved-value="0">
+			<generator class="native" />
+		</id>
+		<discriminator column="id" insert="false" />
+
+        <property name="encounterDatetime" type="java.util.Date" not-null="true" column="encounter_datetime" />
+
+        <many-to-one name="patient" class="org.openmrs.Patient" not-null="true">
+            <column name="patient_id" />
+        </many-to-one>
+
+        <many-to-one name="encounter" class="org.openmrs.Encounter" not-null="true">
+            <column name="encounter_id" />
+        </many-to-one>
+
+        <many-to-one name="location" class="org.openmrs.Location" not-null="true">
+            <column name="location_id" />
+        </many-to-one>
+
+        <many-to-one name="parentQuestion" class="org.openmrs.Concept" not-null="false">
+            <column name="parent_concept_id" />
+        </many-to-one>
+
+        <many-to-one name="question" class="org.openmrs.Concept" not-null="true">
+            <column name="concept_id" />
+        </many-to-one>
+
+        <property name="onAbacavir" type="java.lang.Boolean" column="on_abacavir" length="1" not-null="false" />
+
+        <property name="onAtazanavir" type="java.lang.Boolean" column="on_atazanavir" length="1" not-null="false" />
+
+        <property name="onDarunavir" type="java.lang.Boolean" column="on_darunavir" length="1" not-null="false" />
+
+        <property name="onDidanosine" type="java.lang.Boolean" column="on_didanosine" length="1" not-null="false" />
+
+        <property name="onEfavirenz" type="java.lang.Boolean" column="on_efavirenz" length="1" not-null="false" />
+
+        <property name="onEmtricitabine" type="java.lang.Boolean" column="on_emtricitabine" length="1" not-null="false" />
+
+        <property name="onEtravirine" type="java.lang.Boolean" column="on_etravirine" length="1" not-null="false" />
+
+        <property name="onIndinavir" type="java.lang.Boolean" column="on_indinavir" length="1" not-null="false" />
+
+        <property name="onLamivudine" type="java.lang.Boolean" column="on_lamivudine" length="1" not-null="false" />
+
+        <property name="onLopinavir" type="java.lang.Boolean" column="on_lopinavir" length="1" not-null="false" />
+
+        <property name="onNelfinavir" type="java.lang.Boolean" column="on_nelfinavir" length="1" not-null="false" />
+
+        <property name="onNevirapine" type="java.lang.Boolean" column="on_nevirapine" length="1" not-null="false" />
+
+        <property name="onRaltegravir" type="java.lang.Boolean" column="on_raltegravir" length="1" not-null="false" />
+
+        <property name="onRitonavir" type="java.lang.Boolean" column="on_ritonavir" length="1" not-null="false" />
+
+        <property name="onStavudine" type="java.lang.Boolean" column="on_stavudine" length="1" not-null="false" />
+
+        <property name="onTenofovir" type="java.lang.Boolean" column="on_tenofovir" length="1" not-null="false" />
+
+        <property name="onZidovudine" type="java.lang.Boolean" column="on_zidovudine" length="1" not-null="false" />
+
+        <property name="onOther" type="java.lang.Boolean" column="on_other" length="1" not-null="false" />
+
+        <property name="onUnknown" type="java.lang.Boolean" column="on_unknown" length="1" not-null="false" />
+
+        <property name="uuid" type="java.lang.String" column="uuid" length="38" unique="true" not-null="true" />
+	</class>
+
+</hibernate-mapping>
