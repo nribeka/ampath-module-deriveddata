@@ -5,7 +5,7 @@
 
 <hibernate-mapping package="org.openmrs.module.deriveddata.api.model">
 
-	<class name="org.openmrs.module.deriveddata.api.model.ArvData" table="deriveddata_arv_data">
+	<class name="ArvData" table="deriveddata_arv_data">
 		<id name="id" type="int" column="id" unsaved-value="0">
 			<generator class="native" />
 		</id>

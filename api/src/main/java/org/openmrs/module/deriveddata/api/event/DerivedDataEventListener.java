@@ -26,8 +26,12 @@ import org.openmrs.api.context.Context;
 import org.openmrs.event.Event;
 import org.openmrs.event.SubscribableEventListener;
 import org.openmrs.module.deriveddata.api.model.ArvData;
+import org.openmrs.module.deriveddata.api.model.TbData;
 import org.openmrs.module.deriveddata.api.service.ArvDataService;
+import org.openmrs.module.deriveddata.api.service.TbDataService;
 import org.openmrs.module.deriveddata.api.util.ArvDataUtils;
+import org.openmrs.module.deriveddata.api.util.TbDataUtils;
+import org.openmrs.module.deriveddata.api.util.ValidateUtils;
 import org.openmrs.util.PrivilegeConstants;
 
 import javax.jms.JMSException;
@@ -78,76 +82,115 @@ public class DerivedDataEventListener implements SubscribableEventListener {
             String classname = mapMessage.getString("classname");
             String actionString = mapMessage.getString("action");
             Event.Action action = Event.Action.valueOf(actionString);
-            ArvDataService service = Context.getService(ArvDataService.class);
 
-            ObsService obsService = Context.getObsService();
-            EncounterService encounterService = Context.getEncounterService();
-
-            // Encounter event: can create, can update encounter information and can delete arv data
-            // Obs event: can only update the medications of arv record!
-
-            if (StringUtils.equals(classname, ENCOUNTER_CLASS_NAME)) {
-                Encounter encounter = encounterService.getEncounterByUuid(uuid);
-                List<ArvData> arvDataList = service.findArvDataByEncounter(encounter);
-                switch (action) {
-                    case CREATED:
-                    case UNVOIDED:
-                        Map<Concept, ArvData> arvDataMap = getConceptArvDataMap(encounter);
-                        for (ArvData arvData : arvDataMap.values())
-                            service.saveArvData(arvData);
-                        break;
-                    case UPDATED:
-                        for (ArvData arvData : arvDataList) {
-                            arvData.setEncounterDatetime(encounter.getEncounterDatetime());
-                            arvData.setLocation(encounter.getLocation());
-                            service.saveArvData(arvData);
-                        }
-                        break;
-                    case VOIDED:
-                        for (ArvData arvData : arvDataList)
-                            service.deleteArvData(arvData);
-                        break;
-                }
-            } else if (StringUtils.equals(classname, OBS_CLASS_NAME)) {
-                Obs obs = obsService.getObsByUuid(uuid);
-                Concept question = obs.getConcept();
-                // we only process if the question is one of the arv questions!
-                if (ArvDataUtils.getQuestions().contains(question)) {
-                    Concept valueCoded = obs.getValueCoded();
-                    Encounter encounter = obs.getEncounter();
-                    ArvData arvData = service.getArvData(encounter, question);
-                    if (arvData != null) {
-                        switch (action) {
-                            case CREATED:
-                            case UNVOIDED:
-                                arvData.setMedications(valueCoded, Boolean.TRUE);
-                                service.saveArvData(arvData);
-                                break;
-                            case UPDATED:
-                                // TODO: need to iterate all the obs in case they change the coded value!
-                                arvData.resetMedications();
-                                List<Obs> observations = obsService.getObservationsByPersonAndConcept(obs.getPerson(), question);
-                                for (Obs observation : observations)
-                                    if (encounter.equals(observation.getEncounter()))
-                                        arvData.setMedications(observation.getValueCoded(), Boolean.TRUE);
-                                service.saveArvData(arvData);
-                                break;
-                            case VOIDED:
-                                // Check if it's not null, then update it.
-                                // this checking is needed because when you void an encounter, you're deleting the record!
-                                arvData.setMedications(valueCoded, Boolean.FALSE);
-                                service.saveArvData(arvData);
-                                break;
-                        }
-                    }
-                }
-            }
+            if (StringUtils.equals(classname, ENCOUNTER_CLASS_NAME))
+                handleEncounter(uuid, action);
+            else if (StringUtils.equals(classname, OBS_CLASS_NAME))
+                handleObservation(uuid, action);
+            else
+                log.error("This will be a bug in event module. We're only interested with two classes!");
         } catch (JMSException e) {
             log.error("Reading JMS message failed!", e);
         } finally {
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_OBS);
             Context.removeProxyPrivilege(PrivilegeConstants.VIEW_ENCOUNTERS);
+            Context.clearSession();
             Context.closeSession();
+        }
+    }
+
+    private void handleObservation(final String uuid, final Event.Action action) {
+        // Obs event: can only update the medications of arv record!
+        ObsService obsService = Context.getObsService();
+
+        Obs obs = obsService.getObsByUuid(uuid);
+        Concept question = obs.getConcept();
+        if (ValidateUtils.isValid(obs.getObsDatetime())) {
+            Concept valueCoded = obs.getValueCoded();
+            Encounter encounter = obs.getEncounter();
+            // we only process if the question is one of the arv questions!
+            if (ArvDataUtils.getQuestions().contains(question)) {
+                ArvDataService service = Context.getService(ArvDataService.class);
+                ArvData arvData = service.getArvData(encounter, question);
+                if (arvData != null) {
+                    switch (action) {
+                        case CREATED:
+                        case UNVOIDED: {
+                            arvData.setMedications(valueCoded, Boolean.TRUE);
+                            service.saveArvData(arvData);
+                            break;
+                        }
+                        case UPDATED: {
+                            // We need to switch the old value to false and the new value to true.
+                            // But because we don't know the old value, we need to iterate all obs here.
+                            arvData.resetMedications();
+                            List<Obs> observations =
+                                    obsService.getObservationsByPersonAndConcept(obs.getPerson(), question);
+                            for (Obs observation : observations)
+                                if (encounter.equals(observation.getEncounter()))
+                                    arvData.setMedications(observation.getValueCoded(), Boolean.TRUE);
+                            service.saveArvData(arvData);
+                            break;
+                        }
+                        case VOIDED: {
+                            arvData.setMedications(valueCoded, Boolean.FALSE);
+                            service.saveArvData(arvData);
+                            break;
+                        }
+                    }
+                }
+            } else if (TbDataUtils.getQuestions().contains(question)) {
+                TbDataService service = Context.getService(TbDataService.class);
+                TbData tbData = service.getTbData(encounter, question);
+                if (tbData != null) {
+                    switch (action) {
+                        case CREATED:
+                        case UNVOIDED: {
+                            break;
+                        }
+                        case UPDATED: {
+                            break;
+                        }
+                        case VOIDED: {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void handleEncounter(final String uuid, final Event.Action action) {
+        // Encounter event: can create, can update encounter information and can delete arv data
+        EncounterService encounterService = Context.getEncounterService();
+        ArvDataService arvDataService = Context.getService(ArvDataService.class);
+        TbDataService tbDataService = Context.getService(TbDataService.class);
+
+        Encounter encounter = encounterService.getEncounterByUuid(uuid);
+        switch (action) {
+            case CREATED:
+            case UNVOIDED: {
+                Map<Concept, ArvData> arvDataMap = getConceptArvDataMap(encounter);
+                for (ArvData arvData : arvDataMap.values())
+                    arvDataService.saveArvData(arvData);
+                break;
+            }
+            case UPDATED: {
+                List<ArvData> arvDataList = arvDataService.findArvDataByEncounter(encounter);
+                for (ArvData arvData : arvDataList) {
+                    arvData.setEncounterDatetime(encounter.getEncounterDatetime());
+                    arvData.setLocation(encounter.getLocation());
+                    arvDataService.saveArvData(arvData);
+                }
+                break;
+            }
+            case VOIDED: {
+                List<ArvData> arvDataList = arvDataService.findArvDataByEncounter(encounter);
+                for (ArvData arvData : arvDataList)
+                    arvDataService.deleteArvData(arvData);
+                // get the episodes and then recalculate the episodes datetime
+                break;
+            }
         }
     }
 
@@ -155,7 +198,8 @@ public class DerivedDataEventListener implements SubscribableEventListener {
         Map<Concept, ArvData> arvDataMap = new HashMap<Concept, ArvData>();
         for (Obs obs : encounter.getAllObs()) {
             Concept question = obs.getConcept();
-            if (ArvDataUtils.getQuestions().contains(question)) {
+            if (ArvDataUtils.getQuestions().contains(question)
+                    && ValidateUtils.isValid(obs.getObsDatetime())) {
                 Concept valueCoded = obs.getValueCoded();
                 ArvData arvData = arvDataMap.get(question);
                 if (arvData == null) {

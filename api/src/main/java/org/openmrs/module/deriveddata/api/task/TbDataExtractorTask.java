@@ -24,19 +24,21 @@ import org.openmrs.api.ObsService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.PatientSetService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.deriveddata.api.model.ArvData;
-import org.openmrs.module.deriveddata.api.service.ArvDataService;
+import org.openmrs.module.deriveddata.api.model.TbData;
+import org.openmrs.module.deriveddata.api.service.TbDataService;
 import org.openmrs.module.deriveddata.api.util.ArvDataUtils;
+import org.openmrs.module.deriveddata.api.util.TbDataUtils;
 import org.openmrs.module.deriveddata.api.util.ValidateUtils;
 import org.openmrs.scheduler.tasks.AbstractTask;
 
+import java.util.Date;
 import java.util.List;
 
 /**
  */
-public class ArvDataExtractorTask extends AbstractTask {
+public class TbDataExtractorTask extends AbstractTask {
 
-    private final Log log = LogFactory.getLog(ArvDataExtractorTask.class);
+    private final Log log = LogFactory.getLog(TbDataExtractorTask.class);
 
     @Override
     public void execute() {
@@ -49,13 +51,42 @@ public class ArvDataExtractorTask extends AbstractTask {
             Cohort cohort = patientSetService.getAllPatients();
 
             for (Integer patientId : cohort.getMemberIds()) {
-                for (Concept question : ArvDataUtils.getQuestions()) {
+                for (Concept question : TbDataUtils.getQuestions()) {
+                    Date currentDate = null;
+                    Boolean onStarted = Boolean.FALSE;
                     Patient patient = new Patient(patientId);
                     List<Obs> observations = obsService.getObservationsByPersonAndConcept(patient, question);
                     for (Obs observation : observations) {
-                        if (ValidateUtils.isValid(observation.getObsDatetime())) {
-                            ArvData arvData = getArvData(observation);
-                            Context.getService(ArvDataService.class).saveArvData(arvData);
+                        Concept valueCoded = observation.getValueCoded();
+                        if (TbDataUtils.getAnswers().contains(valueCoded)
+                                && ValidateUtils.isValid(observation.getObsDatetime())) {
+
+                            if (TbDataUtils.ANSWER_START_DRUGS.equals(valueCoded)) {
+                                if (!onStarted) {
+                                    onStarted = Boolean.TRUE;
+                                    currentDate = observation.getObsDatetime();
+                                }
+                            } else if (TbDataUtils.ANSWER_STOP_DRUGS.equals(valueCoded)) {
+                                if (onStarted) {
+                                    onStarted = Boolean.FALSE;
+                                    currentDate = observation.getObsDatetime();
+                                }
+                            }
+
+                            TbData tbData = new TbData();
+                            tbData.setQuestion(observation.getConcept());
+                            tbData.setAnswer(observation.getValueCoded());
+
+                            Encounter encounter = observation.getEncounter();
+                            tbData.setEncounter(encounter);
+                            tbData.setPatient(encounter.getPatient());
+                            tbData.setLocation(encounter.getLocation());
+                            tbData.setOriginalDate(encounter.getEncounterDatetime());
+
+                            tbData.setOnStarted(onStarted);
+                            tbData.setStartDate(currentDate);
+
+                            Context.getService(TbDataService.class).saveTbData(tbData);
                             cleanSession(counter++);
                         }
                     }
@@ -66,30 +97,6 @@ public class ArvDataExtractorTask extends AbstractTask {
         } finally {
             Context.closeSession();
         }
-    }
-
-    private ArvData getArvData(final Obs observation) {
-        Concept question = observation.getConcept();
-        Concept valueCoded = observation.getValueCoded();
-
-        Encounter encounter = observation.getEncounter();
-        ArvData arvData = Context.getService(ArvDataService.class).getArvData(encounter, question);
-        if (arvData == null) {
-            Obs parentObs = observation.getObsGroup();
-            Concept parentQuestion = null;
-            if (parentObs != null)
-                parentQuestion = parentObs.getConcept();
-
-            arvData = new ArvData();
-            arvData.setQuestion(question);
-            arvData.setEncounter(encounter);
-            arvData.setParentQuestion(parentQuestion);
-            arvData.setPatient(encounter.getPatient());
-            arvData.setLocation(encounter.getLocation());
-            arvData.setEncounterDatetime(encounter.getEncounterDatetime());
-        }
-        arvData.setMedications(valueCoded, Boolean.TRUE);
-        return arvData;
     }
 
     private void cleanSession(final Integer counter) {

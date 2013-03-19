@@ -77,6 +77,75 @@
             <column name="concept_id"/>
             <column name="encounter_datetime"/>
         </createIndex>
+        <createIndex tableName="deriveddata_arv_data" indexName="idx_patient_concept_datetime">
+            <column name="patient_id"/>
+            <column name="encounter_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="deriveddata-2013-03-19-17-10" author="nribeka">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="deriveddata_tb_data"></tableExists>
+            </not>
+        </preConditions>
+        <createTable tableName="deriveddata_tb_data">
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="encounter_datetime" type="datetime" valueDate="1970-01-01">
+                <constraints nullable="false"/>
+            </column>
+            <column name="patient_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="encounter_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_concept_id" type="int">
+                <constraints nullable="true"/>
+            </column>
+            <column name="concept_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="coded_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interpolated_datetime" type="datetime" valueDate="1970-01-01">
+                <constraints nullable="false"/>
+            </column>
+            <column name="on_started" type="boolean" defaultValueBoolean="false"/>
+            <column name="uuid" type="char(38)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint constraintName="patient_id_fk"
+                                 baseTableName="deriveddata_tb_data" baseColumnNames="patient_id"
+                                 referencedTableName="patient" referencedColumnNames="patient_id"/>
+        <addForeignKeyConstraint constraintName="encounter_id_fk"
+                                 baseTableName="deriveddata_tb_data" baseColumnNames="encounter_id"
+                                 referencedTableName="encounter" referencedColumnNames="encounter_id"/>
+        <addForeignKeyConstraint constraintName="location_id_fk"
+                                 baseTableName="deriveddata_tb_data" baseColumnNames="location_id"
+                                 referencedTableName="location" referencedColumnNames="location_id"/>
+        <addForeignKeyConstraint constraintName="concept_id_fk"
+                                 baseTableName="deriveddata_tb_data" baseColumnNames="concept_id"
+                                 referencedTableName="concept" referencedColumnNames="concept_id"/>
+        <addForeignKeyConstraint constraintName="coded_id_fk"
+                                 baseTableName="deriveddata_tb_data" baseColumnNames="coded_id"
+                                 referencedTableName="concept" referencedColumnNames="concept_id"/>
+        <createIndex tableName="deriveddata_tb_data" indexName="idx_patient_concept_datetime">
+            <column name="patient_id"/>
+            <column name="concept_id"/>
+            <column name="encounter_datetime"/>
+        </createIndex>
+        <createIndex tableName="deriveddata_tb_data" indexName="idx_patient_concept_datetime">
+            <column name="patient_id"/>
+            <column name="encounter_id"/>
+        </createIndex>
     </changeSet>
 
 

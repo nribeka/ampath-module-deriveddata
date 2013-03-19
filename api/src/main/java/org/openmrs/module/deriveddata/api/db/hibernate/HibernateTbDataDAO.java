@@ -22,14 +22,14 @@ import org.hibernate.criterion.Order;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
 import org.openmrs.Patient;
-import org.openmrs.module.deriveddata.api.db.ArvDataDAO;
-import org.openmrs.module.deriveddata.api.model.ArvData;
+import org.openmrs.module.deriveddata.api.db.TbDataDAO;
+import org.openmrs.module.deriveddata.api.model.TbData;
 
 import java.util.List;
 
 /**
  */
-public class HibernateArvDataDAO implements ArvDataDAO {
+public class HibernateTbDataDAO implements TbDataDAO {
     protected final Log log = LogFactory.getLog(this.getClass());
 
     private SessionFactory sessionFactory;
@@ -49,38 +49,37 @@ public class HibernateArvDataDAO implements ArvDataDAO {
     }
 
     @Override
-    public ArvData saveArvData(final ArvData data) {
+    public TbData saveTbData(final TbData data) {
         getSessionFactory().getCurrentSession().saveOrUpdate(data);
         return data;
     }
 
     @Override
-    public ArvData getArvData(final Encounter encounter, final Concept question) {
-        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(ArvData.class);
+    public TbData getTbData(final Encounter encounter, final Concept question) {
+        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(TbData.class);
         criteria.add(Expression.eq("encounter", encounter));
         criteria.add(Expression.eq("question", question));
-        return (ArvData) criteria.uniqueResult();
+        return (TbData) criteria.uniqueResult();
     }
 
     @Override
-    public List<ArvData> findArvDataByEncounter(final Encounter encounter) {
-        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(ArvData.class);
+    public List<TbData> findTbDataByEncounter(final Encounter encounter) {
+        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(TbData.class);
         criteria.add(Expression.eq("encounter", encounter));
         criteria.addOrder(Order.asc("question"));
         return criteria.list();
     }
 
     @Override
-    public List<ArvData> findArvDataByPatient(final Patient patient) {
-        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(ArvData.class);
+    public List<TbData> findTbDataByPatient(final Patient patient) {
+        Criteria criteria = getSessionFactory().getCurrentSession().createCriteria(TbData.class);
         criteria.add(Expression.eq("patient", patient));
         criteria.addOrder(Order.asc("encounterDatetime"));
-        criteria.addOrder(Order.asc("question"));
         return criteria.list();
     }
 
     @Override
-    public void deleteArvData(final ArvData data) {
+    public void deleteTbData(final TbData data) {
         getSessionFactory().getCurrentSession().delete(data);
     }
 }
